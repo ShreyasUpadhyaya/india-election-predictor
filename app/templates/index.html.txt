@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>India Election Predictor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      padding: 20px 40px;
+      border-bottom: 2px solid #ff6600;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header .flag { font-size: 2rem; }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      border: 1px solid #2a2a4a;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      color: #ff6600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #2a2a4a;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    select, input[type="range"] {
+      background: #0f0f1a;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      width: 100%;
+      appearance: none;
+      cursor: pointer;
+      transition: border 0.2s;
+    }
+
+    select:hover, select:focus {
+      border-color: #ff6600;
+      outline: none;
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      height: 6px;
+      border-radius: 4px;
+      accent-color: #ff6600;
+      flex: 1;
+    }
+
+    .slider-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ff6600;
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .predict-btn {
+      width: 100%;
+      padding: 16px;
+      background: #ff6600;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .predict-btn:hover { background: #e05500; transform: translateY(-1px); }
+    .predict-btn:active { transform: translateY(0); }
+
+    .result-card {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 32px;
+      border: 1px solid #ff6600;
+      display: none;
+    }
+
+    .result-card.visible { display: block; }
+
+    .result-card h2 {
+      font-size: 0.85rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .result-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .result-party {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #ff6600;
+    }
+
+    .result-constituency {
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .confidence-box {
+      text-align: center;
+      background: #0f0f1a;
+      padding: 16px 24px;
+      border-radius: 10px;
+    }
+
+    .confidence-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #00c875;
+    }
+
+    .confidence-label {
+      font-size: 0.75rem;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .prob-bars { margin-top: 8px; }
+
+    .prob-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .prob-party-name {
+      font-size: 0.85rem;
+      color: #e0e0e0;
+      width: 80px;
+      flex-shrink: 0;
+    }
+
+    .prob-bar-bg {
+      flex: 1;
+      background: #0f0f1a;
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: #ff6600;
+      transition: width 0.8s ease;
+    }
+
+    .prob-pct {
+      font-size: 0.85rem;
+      color: #aaa;
+      width: 36px;
+      text-align: right;
+    }
+
+    .disclaimer {
+      margin-top: 16px;
+      font-size: 0.75rem;
+      color: #555;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="flag">🇮🇳</div>
+    <div>
+      <h1>India Election Predictor</h1>
+      <p>Lok Sabha constituency-level outcome prediction using ML</p>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- LOCATION -->
+    <div class="card">
+      <h2>📍 Constituency</h2>
+      <div class="grid-2">
+        <div class="field">
+          <label>State</label>
+          <select id="state" onchange="updateConstituencies()">
+            <option value="">-- Select State --</option>
+            <option>Uttar Pradesh</option>
+            <option>Maharashtra</option>
+            <option>West Bengal</option>
+            <option>Bihar</option>
+            <option>Tamil Nadu</option>
+            <option>Rajasthan</option>
+            <option>Madhya Pradesh</option>
+            <option>Karnataka</option>
+            <option>Gujarat</option>
+            <option>Delhi</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Constituency</label>
+          <select id="constituency">
+            <option value="">-- Select State First --</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANDIDATE PROFILE -->
+    <div class="card">
+      <h2>👤 Candidate Profile</h2>
+      <div class="grid-3">
+        <div class="field">
+          <label>Party / Alliance</label>
+          <select id="party">
+            <option value="">-- Select --</option>
+            <option>NDA (BJP + Allies)</option>
+            <option>INDIA Alliance</option>
+            <option>BSP</option>
+            <option>Regional Party</option>
+            <option>Independent</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <select id="gender">
+            <option>Male</option>
+            <option>Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Education</label>
+          <select id="education">
+            <option>Post Graduate</option>
+            <option>Graduate</option>
+            <option>12th Pass</option>
+            <option>10th Pass</option>
+            <option>Literate</option>
+            <option>Illiterate</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 20px;">
+        <div class="field">
+          <label>Age of Candidate</label>
+          <div class="slider-row">
+            <input type="range" id="age" min="25" max="85" value="50"
+              oninput="document.getElementById('age-val').innerText = this.value" />
+            <span class="slider-value" id="age-val">50</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Criminal Cases</label>
+          <select id="criminal">
+            <option value="0">None</option>
+            <option value="1">1–2 Cases</option>
+            <option value="2">3–5 Cases</option>
+            <option value="3">5+ Cases</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- VOTER DATA -->
+    <div class="card">
+      <h2>🗳️ Voter Data</h2>
+      <div class="grid-2">
+        <div class="field">
+          <label>Expected Voter Turnout (%)</label>
+          <div class="slider-row">
+            <input type="range" id="turnout" min="30" max="95" value="65"
+              oninput="document.getElementById('turnout-val').innerText = this.value + '%'" />
+            <span class="slider-value" id="turnout-val">65%</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Incumbent Candidate?</label>
+          <select id="incumbent">
+            <option value="1">Yes — same candidate contesting again</option>
+            <option value="0">No — new candidate</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- PREDICT BUTTON -->
+    <button class="predict-btn" onclick="predict()">🔮 PREDICT OUTCOME</button>
+
+    <!-- RESULT -->
+    <div class="result-card" id="result-card" style="margin-top: 24px;">
+      <h2>🏆 Prediction Result</h2>
+      <div class="result-main">
+        <div>
+          <div class="result-party" id="result-party">—</div>
+          <div class="result-constituency" id="result-constituency">—</div>
+        </div>
+        <div class="confidence-box">
+          <div class="confidence-number" id="result-confidence">—</div>
+          <div class="confidence-label">Confidence</div>
+        </div>
+      </div>
+
+      <div class="prob-bars" id="prob-bars"></div>
+      <p class="disclaimer">⚠️ Prediction is based on historical data. Phase 1 uses placeholder logic — real ML model connects in Phase 4.</p>
+    </div>
+
+  </div>
+
+  <script>
+    const constituencyMap = {
+      "Uttar Pradesh": ["Lucknow", "Varanasi", "Agra", "Allahabad", "Kanpur", "Meerut", "Ghaziabad", "Mathura"],
+      "Maharashtra": ["Mumbai North", "Mumbai South", "Pune", "Nagpur", "Nashik", "Thane", "Aurangabad"],
+      "West Bengal": ["Kolkata North", "Kolkata South", "Jadavpur", "Howrah", "Bardhaman", "Darjeeling"],
+      "Bihar": ["Patna Sahib", "Gaya", "Muzaffarpur", "Begusarai", "Darbhanga", "Ara"],
+      "Tamil Nadu": ["Chennai Central", "Chennai South", "Coimbatore", "Madurai", "Salem", "Tiruchirappalli"],
+      "Rajasthan": ["Jaipur", "Jaipur Rural", "Jodhpur", "Udaipur", "Ajmer", "Kota"],
+      "Madhya Pradesh": ["Bhopal", "Indore", "Gwalior", "Jabalpur", "Ujjain", "Rewa"],
+      "Karnataka": ["Bangalore North", "Bangalore South", "Mysore", "Mangalore", "Hubli-Dharwad", "Belgaum"],
+      "Gujarat": ["Ahmedabad East", "Ahmedabad West", "Surat", "Vadodara", "Rajkot", "Gandhinagar"],
+      "Delhi": ["New Delhi", "North East Delhi", "East Delhi", "West Delhi", "North West Delhi", "South Delhi", "Chandni Chowk"]
+    };
+
+    function updateConstituencies() {
+      const state = document.getElementById("state").value;
+      const cSelect = document.getElementById("constituency");
+      cSelect.innerHTML = "";
+      if (!state || !constituencyMap[state]) {
+        cSelect.innerHTML = '<option>-- Select State First --</option>';
+        return;
+      }
+      constituencyMap[state].forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        cSelect.appendChild(opt);
+      });
+    }
+
+    function predict() {
+      const party = document.getElementById("party").value;
+      const constituency = document.getElementById("constituency").value;
+      const state = document.getElementById("state").value;
+      const turnout = parseInt(document.getElementById("turnout").value);
+      const incumbent = document.getElementById("incumbent").value;
+
+      if (!party || !constituency || !state) {
+        alert("Please fill State, Constituency and Party.");
+        return;
+      }
+
+      // Placeholder logic — replaced by real model in Phase 4
+      const partyScores = {
+        "NDA (BJP + Allies)": 68,
+        "INDIA Alliance": 54,
+        "BSP": 22,
+        "Regional Party": 38,
+        "Independent": 12
+      };
+
+      let baseScore = partyScores[party] || 40;
+      if (incumbent === "1") baseScore += 8;
+      if (turnout > 70) baseScore += 5;
+      if (turnout < 50) baseScore -= 5;
+      baseScore = Math.min(baseScore, 92);
+
+      const opponents = Object.entries(partyScores)
+        .filter(([p]) => p !== party)
+        .map(([p, s]) => ({ party: p, score: Math.max(s - 10 + Math.floor(Math.random() * 10), 5) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+
+      document.getElementById("result-party").innerText = party;
+      document.getElementById("result-constituency").innerText = constituency + ", " + state;
+      document.getElementById("result-confidence").innerText = baseScore + "%";
+
+      const barsHTML = [
+        { party, score: baseScore, color: "#ff6600" },
+        ...opponents.map((o, i) => ({ ...o, color: ["#4a90d9", "#9b59b6", "#2ecc71"][i] }))
+      ].map(item => `
+        <div class="prob-row">
+          <span class="prob-party-name">${item.party.split(" ")[0]}</span>
+          <div class="prob-bar-bg">
+            <div class="prob-bar-fill" style="width: ${item.score}%; background: ${item.color};"></div>
+          </div>
+          <span class="prob-pct">${item.score}%</span>
+        </div>
+      `).join("");
+
+      document.getElementById("prob-bars").innerHTML = barsHTML;
+      const card = document.getElementById("result-card");
+      card.classList.add("visible");
+      card.scrollIntoView({ behavior: "smooth" });
+    }
+  </script>
+
+</body>
+</html>
