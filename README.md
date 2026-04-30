@@ -1,4 +1,4 @@
-# 🇮🇳 India Election Predictor
+# India Election Predictor
 
 Predict Lok Sabha election outcomes by constituency using machine learning.
 Built on 2019 and 2024 election data — candidate profile, voter turnout, party, criminal record, and more.
