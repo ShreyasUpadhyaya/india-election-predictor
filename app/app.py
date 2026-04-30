@@ -64,7 +64,6 @@ def predict():
     except Exception as e:
         return jsonify({'error': str(e), 'status': 'error'}), 400
 
-# With this
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))

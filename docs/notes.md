@@ -7,16 +7,36 @@ based on voter data, candidate profile, and historical results.
 ## Data Sources
 | File | Source | Rows | Key Columns |
 |---|---|---|---|
-| candidates_2024.csv | Kaggle | ~8000 | State, Constituency, Party, Age, Gender |
+| candidates_2024.csv | Kaggle — jainaru/lok-sabha-2024-results-and-candidates | ~8000 | State, Constituency, Party, Age, Gender |
 | turnout_2024.csv | data.opencity.in | 543 | PC_Name, Turnout%, Total Electors |
-| results_2019.csv | Kaggle | ~8000 | Winner, Party, Criminal Cases, Education |
+| results_2019.csv | Kaggle — prakrutchauhan/indian-candidates-for-general-election-2019 | ~8000 | Winner, Party, Criminal Cases, Education |
 
 ## Data Pipeline
-1. merge.py — fuzzy matched constituency names across 3 files using thefuzz
-   - 497/540 constituencies matched directly
-   - 43 matched via fuzzy string matching at 85% threshold
-2. preprocessing.py — cleaned nulls, encoded categoricals, dropped leaky columns
-3. master.csv — final merged dataset: ~32000 rows, 8 features
+
+### merge.py
+- Loads all 3 CSV files
+- Standardizes column names: lowercase, underscores
+- Fuzzy matches constituency names using thefuzz at 85% threshold
+- 497/540 constituencies matched directly
+- 43 resolved via fuzzy matching
+- Output: data/cleaned/master.csv
+
+### preprocessing.py
+- Drops useless columns: name, photo, address, application details
+- Fills nulls: criminalcases → 0, age → median, education → Unknown
+- Encodes categoricals via LabelEncoder: state, party, education, category
+- Drops leaky columns: raw vote counts that reveal the answer
+- Drops duplicate merge columns: phase_y, age_y, total_electors_2019
+- Output: overwrites data/cleaned/master.csv
+
+### model.py
+- Loads cleaned master.csv
+- Removes leaky features: generalvotes, postalvotes, totalvotes, vote share columns
+- Trains Random Forest (200 trees) on 8 features
+- 5-fold cross validation
+- Saves SHAP summary plot and feature importance chart to docs/
+- Saves model to models/election_model.pkl
+- Saves scaler to models/scaler.pkl
 
 ## Features Used
 | Feature | Type | Why |
@@ -26,53 +46,87 @@ based on voter data, candidate profile, and historical results.
 | total_electors | Numeric | Constituency size |
 | turnout_percent | Numeric | Voter engagement signal |
 | total_votes | Numeric | Absolute vote volume |
-| state | Encoded | Regional patterns differ |
-| category | Encoded | SC/ST/General reservation affects field |
+| state | Encoded | Regional patterns differ significantly |
+| category | Encoded | SC/ST/General reservation affects candidate field |
 | education | Encoded | Candidate education level |
 
-## Model
-- Algorithm: Random Forest (200 trees)
-- Train/Test Split: 80/20
-- CV Accuracy: 68.3% ± 10.1%
-- Evaluation: 5-fold cross validation
+## Model Results
+| Metric | Value |
+|---|---|
+| CV Accuracy | 68.3% |
+| CV Std Dev | ± 10.1% |
+| Algorithm | Random Forest |
+| Trees | 200 |
+| Train/Test Split | 80/20 |
+
+## Web Application
+
+### app/app.py
+Flask API with two routes:
+- `GET /` — serves index.html
+- `POST /predict` — accepts JSON, returns prediction and probability
+
+Input JSON format:
+```json
+{
+  "age": 52,
+  "constituency_matched": 120,
+  "total_electors": 1500000,
+  "turnout_percent": 65.0,
+  "total_votes": 975000,
+  "state": "Uttar Pradesh",
+  "category": "General",
+  "education": "Post Graduate"
+}
+```
+
+Output JSON format:
+```json
+{
+  "prediction": 1,
+  "win_probability": 68.3,
+  "lose_probability": 31.7,
+  "status": "success"
+}
+```
+
+### app/templates/index.html
+Single page web portal with:
+- State and constituency dropdowns
+- Candidate profile inputs: party, gender, education, age, criminal cases, category
+- Voter data inputs: turnout slider, incumbent toggle
+- Predict button calling /predict endpoint via fetch POST
+- Result card showing predicted outcome and probability bars
+
+## Deployment
+- Platform: Render.com
+- Python version: 3.11.9
+- Server: Gunicorn
+- Start command: gunicorn app.app:app
+- Environment variable: PORT=10000
 
 ## Known Limitations
-- 68% accuracy is ceiling with current features
-- Criminal cases and assets data missing for 4000+ rows after merge
-- constituency_matched and total_votes are proxy features not true predictors
-- What would improve it: caste demographic data, alliance data, incumbent flag, margin from last election
+- 68% accuracy reflects data sparsity not model weakness
+- Criminal cases and education null for 4042 rows after merge
+- constituency_matched and state are encoded integers — model cannot generalise to unseen names
+- total_votes is borderline leaky — present election votes used as feature
 
-## What I Would Do Next
-- Add census demographic data per constituency
-- Add alliance strength feature (NDA vs INDIA seat count in state)
-- Add margin from previous election as feature
-- Retrain with XGBoost and compare
-- Add SHAP plots to web portal
-
-## Tech Stack
-| Layer | Tool |
-|---|---|
-| Data | Pandas, thefuzz |
-| ML | Scikit-learn Random Forest |
-| Explainability | SHAP |
-| Backend | Flask |
-| Frontend | HTML, CSS, JavaScript |
-| Deployment | Render.com |
-
-## How to Run Locally
-```bash
-pip install -r requirements.txt
-python src/merge.py
-python src/preprocessing.py
-python src/model.py
-python app/app.py
-```
-Open http://localhost:5000
+## What Would Improve This
+- Census 2011 caste demographic data per constituency
+- Alliance strength: NDA vs INDIA seat share per state
+- Incumbent flag: same candidate from last election
+- Margin from previous election as numeric feature
+- XGBoost — handles missing values natively, usually outperforms RF on tabular data
+- Merge 2009 + 2014 data for larger training set
 
 ## Commit History
-- [INIT] Folder structure and README
-- [UI] Web portal with input form
-- [DATA] Merge 3 source files with fuzzy matching
-- [CLEAN] Preprocessing and feature engineering
-- [MODEL] Random Forest training and SHAP analysis
-- [CONNECT] Flask API connected to trained model
+| Commit | Description |
+|---|---|
+| [INIT] | Folder structure, gitkeep placeholders, README |
+| [UI] | Web portal with input form, dark theme, orange accent |
+| [DATA] | merge.py — 3 files joined with fuzzy matching |
+| [CLEAN] | preprocessing.py — nulls, encoding, feature engineering |
+| [EDA] | eda.py — win rate, criminal cases, turnout analysis |
+| [MODEL] | Random Forest, SHAP, cross validation, pickle save |
+| [CONNECT] | Flask API connected to trained model |
+| [DEPLOY] | Render deployment, Python 3.11, gunicorn config |
