@@ -325,6 +325,14 @@
             <option>Illiterate</option>
           </select>
         </div>
+      <div class="field">
+        <label>Constituency Category</label>
+        <select id="category">
+        <option value="General">General</option>
+        <option value="SC">SC (Reserved)</option>
+        <option value="ST">ST (Reserved)</option>
+        </select>
+      </div>
       </div>
 
       <div class="grid-2" style="margin-top: 20px;">
@@ -388,7 +396,6 @@
       </div>
 
       <div class="prob-bars" id="prob-bars"></div>
-      <p class="disclaimer">⚠️ Prediction is based on historical data. Phase 1 uses placeholder logic — real ML model connects in Phase 4.</p>
     </div>
 
   </div>
@@ -423,61 +430,80 @@
       });
     }
 
-    function predict() {
-      const party = document.getElementById("party").value;
-      const constituency = document.getElementById("constituency").value;
-      const state = document.getElementById("state").value;
-      const turnout = parseInt(document.getElementById("turnout").value);
-      const incumbent = document.getElementById("incumbent").value;
+    async function predict() {
+    const party = document.getElementById("party").value;
+    const constituency = document.getElementById("constituency").value;
+    const state = document.getElementById("state").value;
+    const turnout = parseInt(document.getElementById("turnout").value);
+    const age = parseInt(document.getElementById("age").value);
+    const education = document.getElementById("education").value;
+    const category = document.getElementById("category").value;
 
-      if (!party || !constituency || !state) {
+    if (!party || !constituency || !state) {
         alert("Please fill State, Constituency and Party.");
         return;
-      }
-
-      // Placeholder logic — replaced by real model in Phase 4
-      const partyScores = {
-        "NDA (BJP + Allies)": 68,
-        "INDIA Alliance": 54,
-        "BSP": 22,
-        "Regional Party": 38,
-        "Independent": 12
-      };
-
-      let baseScore = partyScores[party] || 40;
-      if (incumbent === "1") baseScore += 8;
-      if (turnout > 70) baseScore += 5;
-      if (turnout < 50) baseScore -= 5;
-      baseScore = Math.min(baseScore, 92);
-
-      const opponents = Object.entries(partyScores)
-        .filter(([p]) => p !== party)
-        .map(([p, s]) => ({ party: p, score: Math.max(s - 10 + Math.floor(Math.random() * 10), 5) }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
-
-      document.getElementById("result-party").innerText = party;
-      document.getElementById("result-constituency").innerText = constituency + ", " + state;
-      document.getElementById("result-confidence").innerText = baseScore + "%";
-
-      const barsHTML = [
-        { party, score: baseScore, color: "#ff6600" },
-        ...opponents.map((o, i) => ({ ...o, color: ["#4a90d9", "#9b59b6", "#2ecc71"][i] }))
-      ].map(item => `
-        <div class="prob-row">
-          <span class="prob-party-name">${item.party.split(" ")[0]}</span>
-          <div class="prob-bar-bg">
-            <div class="prob-bar-fill" style="width: ${item.score}%; background: ${item.color};"></div>
-          </div>
-          <span class="prob-pct">${item.score}%</span>
-        </div>
-      `).join("");
-
-      document.getElementById("prob-bars").innerHTML = barsHTML;
-      const card = document.getElementById("result-card");
-      card.classList.add("visible");
-      card.scrollIntoView({ behavior: "smooth" });
     }
+
+    // Estimate total_electors and total_votes from turnout
+    const total_electors = 1500000;
+    const total_votes = Math.round(total_electors * turnout / 100);
+
+    const payload = {
+        age: age,
+        constituency_matched: 120,
+        total_electors: total_electors,
+        turnout_percent: turnout,
+        total_votes: total_votes,
+        state: state,
+        category: category || "General",
+        education: education
+    };
+
+    try {
+        document.querySelector('.predict-btn').innerText = "Predicting...";
+
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'error') {
+            alert("Error: " + result.error);
+            return;
+        }
+
+        
+        const outcomeText = result.prediction === 1 ? "✅ " + party + " WINS" : "❌ " + party + " LOSES";
+        document.getElementById("result-party").innerText = outcomeText;
+        document.getElementById("result-constituency").innerText = constituency + ", " + state;
+        document.getElementById("result-confidence").innerText = result.win_probability + "%";
+
+        const barsHTML = [
+    { party: party, score: result.win_probability, color: "#ff6600" },
+    { party: "Others", score: result.lose_probability, color: "#4a90d9" }
+].map(item => `
+            <div class="prob-row">
+                <span class="prob-party-name">${item.party.split(" ")[0]}</span>
+                <div class="prob-bar-bg">
+                    <div class="prob-bar-fill" style="width:${item.score}%; background:${item.color};"></div>
+                </div>
+                <span class="prob-pct">${item.score}%</span>
+            </div>
+        `).join("");
+
+        document.getElementById("prob-bars").innerHTML = barsHTML;
+        document.getElementById("result-card").classList.add("visible");
+        document.getElementById("result-card").scrollIntoView({ behavior: "smooth" });
+
+    } catch (err) {
+        alert("Request failed: " + err.message);
+    } finally {
+        document.querySelector('.predict-btn').innerText = "🔮 PREDICT OUTCOME";
+    }
+}
   </script>
 
 </body>
